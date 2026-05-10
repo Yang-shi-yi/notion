@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion Square Progress Bar</title>
+<title>Notion Progress Bar - Aligned</title>
 <style>
   /* 全局透明与基础排版 */
   html, body {
@@ -31,37 +31,40 @@
     width: 100%;
   }
 
-  /* 【样式修改核心】外边框设计：方形 */
+  /* 方形外边框 */
   .bar-container {
     flex-grow: 1; 
     height: 22vh; 
     max-height: 20px;
     min-height: 14px;
     border: 2px solid rgb(55, 65, 81);
-    /* 将 999px 改为 4px，呈现 Notion 经典的微圆角方形 */
-    /* 如果你想要那种绝对锋利、刀切一样的直角，请把这里改成 0px */
-    border-radius: 4px; 
-    padding: 2px; /* 依然保留内间距，形成嵌套感 */
+    border-radius: 4px; /* 微圆角方形 */
+    padding: 2px; /* 电池风留白 */
     box-sizing: border-box;
     display: flex;
   }
 
-  /* 【样式修改核心】内部进度条设计：方形 */
+  /* 方形内部进度条 */
   .bar-fill {
     height: 100%;
     background-color: rgb(55, 65, 81);
-    /* 内部填充色块的圆角要比外框稍微小一点点，视觉上最协调 */
     border-radius: 2px; 
     width: 0%;
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); 
   }
 
-  /* 文本标签设计 */
+  /* 【排版核心】文本标签的左右对齐设计 */
   .percentage {
     font-size: 15px; 
     font-weight: 400; 
-    white-space: nowrap; 
-    min-width: 78px; 
+    /* 1. 设定一个固定的宽度，确保三行文字占据的区域一样大 */
+    width: 90px; 
+    /* 2. 开启弹性盒子 */
+    display: flex; 
+    /* 3. 神奇属性：让两端的元素分别贴紧左右两侧 */
+    justify-content: space-between; 
+    /* 防止在小屏幕下被进度条挤压变形 */
+    flex-shrink: 0; 
   }
 </style>
 </head>
@@ -69,41 +72,53 @@
 
 <div class="row">
   <div class="bar-container"><div class="bar-fill" id="year-bar"></div></div>
-  <div class="percentage" id="year-text">Year: 0%</div>
+  <div class="percentage" id="year-text"></div>
 </div>
 <div class="row">
   <div class="bar-container"><div class="bar-fill" id="month-bar"></div></div>
-  <div class="percentage" id="month-text">Month: 0%</div>
+  <div class="percentage" id="month-text"></div>
 </div>
 <div class="row">
   <div class="bar-container"><div class="bar-fill" id="week-bar"></div></div>
-  <div class="percentage" id="week-text">Week: 0%</div>
+  <div class="percentage" id="week-text"></div>
 </div>
 
 <script>
   function updateProgress() {
     const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentDate = now.getDate();
 
-    // 年份计算
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
-    const yearPercent = Math.floor(((now - startOfYear) / (endOfYear - startOfYear)) * 100);
+    // 1. 年份计算 (底层毫秒级时间戳，完全无视闰年平年差异，精准无误)
+    const startOfYear = new Date(currentYear, 0, 1).getTime();
+    const endOfYear = new Date(currentYear + 1, 0, 1).getTime();
 
-    // 月份计算
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const monthPercent = Math.floor(((now - startOfMonth) / (endOfMonth - startOfMonth)) * 100);
+    // 2. 月份计算 (JS 引擎自动处理 28/30/31 天)
+    const startOfMonth = new Date(currentYear, currentMonth, 1).getTime();
+    const endOfMonth = new Date(currentYear, currentMonth + 1, 1).getTime();
 
-    // 星期计算
-    const dayOfWeek = now.getDay() || 7; 
-    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + 1);
-    const endOfWeek = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + 7);
-    const weekPercent = Math.floor(((now - startOfWeek) / (endOfWeek - startOfWeek)) * 100);
+    // 3. 星期计算 (国际标准周一为起点)
+    // now.getDay() 返回 0(周日)-6(周六)。我们将周日(0)强制转为 7，方便做数学减法
+    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); 
+    const startOfWeek = new Date(currentYear, currentMonth, currentDate - dayOfWeek + 1).getTime();
+    const endOfWeek = new Date(currentYear, currentMonth, currentDate - dayOfWeek + 8).getTime();
 
-    // 更新页面
+    const currentTime = now.getTime();
+
+    // 计算百分比并向下取整
+    const yearPercent = Math.floor(((currentTime - startOfYear) / (endOfYear - startOfYear)) * 100);
+    const monthPercent = Math.floor(((currentTime - startOfMonth) / (endOfMonth - startOfMonth)) * 100);
+    const weekPercent = Math.floor(((currentTime - startOfWeek) / (endOfWeek - startOfWeek)) * 100);
+
+    // 渲染更新界面
     function setBar(id, percent, label) {
+      // 更新进度条宽度
       document.getElementById(id + '-bar').style.width = percent + '%';
-      document.getElementById(id + '-text').innerText = label + ': ' + percent + '%';
+      
+      // 【排版核心】将 Label 和 Percentage 分别装进两个 span 中
+      // 配合 CSS 的 space-between，实现绝对的左右两端对齐
+      document.getElementById(id + '-text').innerHTML = `<span>${label}:</span><span>${percent}%</span>`;
     }
 
     setTimeout(() => {
