@@ -2,42 +2,51 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>Notion Progress</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notion Minimal Progress</title>
 <style>
+  /* 基础：Notion 极简风字体与深灰色 (#374151) */
   body {
-    /* 匹配 Notion 默认字体 */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    color: #374151; /* Notion 默认深灰色 */
+    color: #374151;
     margin: 0;
-    padding: 8px;
+    /* 通过 padding 确保在透明 Callout 中有微小边距 */
+    padding: 6px; 
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    /* 核心：背景透明，以便完美融入 Notion 的浅蓝色 Callout */
-    background: transparent; 
+    /* gap 决定行间距，可根据需要细微调整 */
+    gap: 8px;
+    background: transparent;
   }
   .row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    /* 进度条与数字之间的间距 */
+    gap: 8px;
   }
+  /* 进度条主体设置 (维持描边空心感) */
   .bar-container {
-    width: 200px;
-    height: 18px;
-    border: 2px solid #374151; /* 外部的深灰色描边 */
-    border-radius: 12px; /* 圆角呈现胶囊状 */
+    /* 进度条宽度，可在此调整 */
+    width: 120px;
+    /* 进度条高度，值越小越紧凑 */
+    height: 14px;
+    border: 2px solid #374151;
+    /* 圆角形成胶囊状 */
+    border-radius: 7px;
     overflow: hidden;
     background: transparent;
   }
+  /* 内部填充：同样的深灰色 */
   .bar-fill {
     height: 100%;
-    background-color: #374151; /* 内部填充颜色 */
-    border-radius: 6px;
+    background-color: #374151;
     width: 0%;
-    transition: width 0.5s ease;
+    transition: width 0.3s ease;
   }
-  .label {
-    font-size: 15px;
+  /* 数值标签：优化后，仅包含百分比数值 */
+  .percentage {
+    /* 字体大小，适当减小以配合紧凑布局 */
+    font-size: 13px;
     font-weight: 500;
   }
 </style>
@@ -46,15 +55,15 @@
 
 <div class="row">
   <div class="bar-container"><div class="bar-fill" id="year-bar"></div></div>
-  <div class="label" id="year-text">Year: 0%</div>
+  <div class="percentage" id="year-percent"></div>
 </div>
 <div class="row">
   <div class="bar-container"><div class="bar-fill" id="month-bar"></div></div>
-  <div class="label" id="month-text">Month: 0%</div>
+  <div class="percentage" id="month-percent"></div>
 </div>
 <div class="row">
   <div class="bar-container"><div class="bar-fill" id="week-bar"></div></div>
-  <div class="label" id="week-text">Week: 0%</div>
+  <div class="percentage" id="week-percent"></div>
 </div>
 
 <script>
@@ -80,11 +89,15 @@
     endOfWeek.setDate(startOfWeek.getDate() + 7);
     const weekPercent = ((now - startOfWeek) / (endOfWeek - startOfWeek)) * 100;
 
-    // 渲染到页面
+    // 关键优化逻辑 (JavaScript 知识点)
     function setBar(id, percent) {
       const p = Math.floor(percent);
+      // 1. 修改宽度
       document.getElementById(id + '-bar').style.width = p + '%';
-      document.getElementById(id + '-text').innerText = id.charAt(0).toUpperCase() + id.slice(1) + ': ' + p + '%';
+      // 2. 优化关键：将 innerText 修改为仅显示百分比数值
+      // 旧代码是：[ID]: [百分比]%
+      // 新代码是：[百分比]%
+      document.getElementById(id + '-percent').innerText = p + '%';
     }
 
     setBar('year', yearPercent);
@@ -93,7 +106,8 @@
   }
 
   updateProgress();
-  setInterval(updateProgress, 60000); // 每分钟刷新一次
+  // 每一分钟重新计算一次
+  setInterval(updateProgress, 60000); 
 </script>
 </body>
 </html>
