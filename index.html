@@ -3,51 +3,63 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion Minimal Progress</title>
+<title>Notion Dynamic Minimal Progress</title>
 <style>
-  /* 基础：Notion 极简风字体与深灰色 (#374151) */
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    color: #374151;
+  /* 全局设置，确保完全透明并占满 Notion 的 Embed 窗口 */
+  html, body {
     margin: 0;
-    /* 通过 padding 确保在透明 Callout 中有微小边距 */
-    padding: 6px; 
-    display: flex;
-    flex-direction: column;
-    /* gap 决定行间距，可根据需要细微调整 */
-    gap: 8px;
+    padding: 0;
+    height: 100%;
+    width: 100%;
     background: transparent;
   }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: rgb(55, 65, 81); /* 采用源码中的精确 RGB 颜色 */
+    display: flex;
+    flex-direction: column;
+    /* 均匀分布每一行，填满整个高度 */
+    justify-content: space-evenly; 
+    padding: 4px 8px; /* 预留极小边距防截断 */
+    box-sizing: border-box;
+  }
+
   .row {
     display: flex;
     align-items: center;
-    /* 进度条与数字之间的间距 */
-    gap: 8px;
+    gap: 12px;
+    width: 100%;
   }
-  /* 进度条主体设置 (维持描边空心感) */
+
+  /* 进度条外框：吸收源码逻辑，高度自适应 */
   .bar-container {
-    /* 进度条宽度，可在此调整 */
-    width: 120px;
-    /* 进度条高度，值越小越紧凑 */
-    height: 14px;
-    border: 2px solid #374151;
-    /* 圆角形成胶囊状 */
-    border-radius: 7px;
+    flex-grow: 1; /* 核心优化：自动占满左侧所有剩余空间 */
+    height: 22vh; /* 吸收源码：高度随 Embed 窗口高度变化 */
+    max-height: 20px; /* 设置上限，防止拉得过高变得难看 */
+    min-height: 8px;  /* 设置下限 */
+    border: 2px solid rgb(55, 65, 81);
+    border-radius: 999px; /* 完美的胶囊圆角 */
     overflow: hidden;
     background: transparent;
+    display: flex;
   }
-  /* 内部填充：同样的深灰色 */
+
+  /* 进度条填充 */
   .bar-fill {
     height: 100%;
-    background-color: #374151;
+    background-color: rgb(55, 65, 81);
     width: 0%;
-    transition: width 0.3s ease;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); /* 让进度条加载时有丝滑的动画 */
   }
-  /* 数值标签：优化后，仅包含百分比数值 */
+
+  /* 百分比文本 */
   .percentage {
-    /* 字体大小，适当减小以配合紧凑布局 */
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
+    /* 固定最小宽度，防止从 9% 变到 10% 时整个布局抖动 */
+    min-width: 32px; 
+    text-align: right;
   }
 </style>
 </head>
@@ -70,17 +82,14 @@
   function updateProgress() {
     const now = new Date();
 
-    // 1. 计算年的进度
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
     const yearPercent = ((now - startOfYear) / (endOfYear - startOfYear)) * 100;
 
-    // 2. 计算月的进度
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const monthPercent = ((now - startOfMonth) / (endOfMonth - startOfMonth)) * 100;
 
-    // 3. 计算周的进度 (这里采用周一为一周的开始)
     const dayOfWeek = now.getDay() || 7; 
     const startOfWeek = new Date(now);
     startOfWeek.setHours(0,0,0,0);
@@ -89,24 +98,21 @@
     endOfWeek.setDate(startOfWeek.getDate() + 7);
     const weekPercent = ((now - startOfWeek) / (endOfWeek - startOfWeek)) * 100;
 
-    // 关键优化逻辑 (JavaScript 知识点)
     function setBar(id, percent) {
       const p = Math.floor(percent);
-      // 1. 修改宽度
       document.getElementById(id + '-bar').style.width = p + '%';
-      // 2. 优化关键：将 innerText 修改为仅显示百分比数值
-      // 旧代码是：[ID]: [百分比]%
-      // 新代码是：[百分比]%
       document.getElementById(id + '-percent').innerText = p + '%';
     }
 
-    setBar('year', yearPercent);
-    setBar('month', monthPercent);
-    setBar('week', weekPercent);
+    // 延迟一点点执行，配合 CSS 实现页面加载时的丝滑填充动画
+    setTimeout(() => {
+      setBar('year', yearPercent);
+      setBar('month', monthPercent);
+      setBar('week', weekPercent);
+    }, 100);
   }
 
   updateProgress();
-  // 每一分钟重新计算一次
   setInterval(updateProgress, 60000); 
 </script>
 </body>
