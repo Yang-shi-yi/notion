@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion Dynamic Minimal Progress</title>
+<title>Notion Progress Bar</title>
 <style>
-  /* 全局设置，确保完全透明并占满 Notion 的 Embed 窗口 */
+  /* 全局透明与基础排版 */
   html, body {
     margin: 0;
     padding: 0;
@@ -15,13 +15,13 @@
   }
 
   body {
+    /* 严格遵循 Notion 的系统默认字体栈 */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    color: rgb(55, 65, 81); /* 采用源码中的精确 RGB 颜色 */
+    color: rgb(55, 65, 81);
     display: flex;
     flex-direction: column;
-    /* 均匀分布每一行，填满整个高度 */
     justify-content: space-evenly; 
-    padding: 4px 8px; /* 预留极小边距防截断 */
+    padding: 4px 8px; 
     box-sizing: border-box;
   }
 
@@ -32,34 +32,34 @@
     width: 100%;
   }
 
-  /* 进度条外框：吸收源码逻辑，高度自适应 */
+  /* 外边框设计 */
   .bar-container {
-    flex-grow: 1; /* 核心优化：自动占满左侧所有剩余空间 */
-    height: 22vh; /* 吸收源码：高度随 Embed 窗口高度变化 */
-    max-height: 20px; /* 设置上限，防止拉得过高变得难看 */
-    min-height: 8px;  /* 设置下限 */
+    flex-grow: 1; 
+    height: 22vh; 
+    max-height: 20px;
+    min-height: 14px;
     border: 2px solid rgb(55, 65, 81);
-    border-radius: 999px; /* 完美的胶囊圆角 */
-    overflow: hidden;
-    background: transparent;
+    border-radius: 999px; /* 胶囊圆角 */
+    padding: 2px; /* 【视觉还原核心】这里的 2px 创造了原图中电池式的“内圈留白” */
+    box-sizing: border-box;
     display: flex;
   }
 
-  /* 进度条填充 */
+  /* 内部进度条设计 */
   .bar-fill {
     height: 100%;
     background-color: rgb(55, 65, 81);
+    border-radius: 999px; /* 【视觉还原核心】让内部填充的首尾也是圆滑的 */
     width: 0%;
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); /* 让进度条加载时有丝滑的动画 */
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); 
   }
 
-  /* 百分比文本 */
+  /* 文本标签设计 */
   .percentage {
-    font-size: 14px;
-    font-weight: 500;
-    /* 固定最小宽度，防止从 9% 变到 10% 时整个布局抖动 */
-    min-width: 32px; 
-    text-align: right;
+    font-size: 15px; 
+    font-weight: 400; /* 原图字体较细，不使用粗体 */
+    white-space: nowrap; 
+    min-width: 78px; /* 锁定文本区宽度，防止 9% 变成 10% 时导致进度条抖动 */
   }
 </style>
 </head>
@@ -67,52 +67,55 @@
 
 <div class="row">
   <div class="bar-container"><div class="bar-fill" id="year-bar"></div></div>
-  <div class="percentage" id="year-percent"></div>
+  <div class="percentage" id="year-text">Year: 0%</div>
 </div>
 <div class="row">
   <div class="bar-container"><div class="bar-fill" id="month-bar"></div></div>
-  <div class="percentage" id="month-percent"></div>
+  <div class="percentage" id="month-text">Month: 0%</div>
 </div>
 <div class="row">
   <div class="bar-container"><div class="bar-fill" id="week-bar"></div></div>
-  <div class="percentage" id="week-percent"></div>
+  <div class="percentage" id="week-text">Week: 0%</div>
 </div>
 
 <script>
   function updateProgress() {
     const now = new Date();
 
+    // 1. 年份计算 (利用毫秒级时间戳，自动适应平年365/闰年366)
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
-    const yearPercent = ((now - startOfYear) / (endOfYear - startOfYear)) * 100;
+    const yearPercent = Math.floor(((now - startOfYear) / (endOfYear - startOfYear)) * 100);
 
+    // 2. 月份计算 (自动识别当月是28、29、30还是31天)
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const monthPercent = ((now - startOfMonth) / (endOfMonth - startOfMonth)) * 100;
+    const monthPercent = Math.floor(((now - startOfMonth) / (endOfMonth - startOfMonth)) * 100);
 
-    const dayOfWeek = now.getDay() || 7; 
-    const startOfWeek = new Date(now);
-    startOfWeek.setHours(0,0,0,0);
-    startOfWeek.setDate(now.getDate() - dayOfWeek + 1);
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 7);
-    const weekPercent = ((now - startOfWeek) / (endOfWeek - startOfWeek)) * 100;
+    // 3. 星期计算 (国际标准：周一为一周的开始)
+    const dayOfWeek = now.getDay() || 7; // 原生的 getDay() 周日是0，这里将其强制转换为7
+    // 即使日期出现跨月(例如1号是周三)，JS Date 对象也能自动倒推出上个月的正确日期作为起始日
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + 1);
+    const endOfWeek = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + 7);
+    const weekPercent = Math.floor(((now - startOfWeek) / (endOfWeek - startOfWeek)) * 100);
 
-    function setBar(id, percent) {
-      const p = Math.floor(percent);
-      document.getElementById(id + '-bar').style.width = p + '%';
-      document.getElementById(id + '-percent').innerText = p + '%';
+    // 更新页面 DOM 元素
+    function setBar(id, percent, label) {
+      document.getElementById(id + '-bar').style.width = percent + '%';
+      document.getElementById(id + '-text').innerText = label + ': ' + percent + '%';
     }
 
-    // 延迟一点点执行，配合 CSS 实现页面加载时的丝滑填充动画
+    // 设置极短延迟，让页面加载时出现进度条平滑生长的动画
     setTimeout(() => {
-      setBar('year', yearPercent);
-      setBar('month', monthPercent);
-      setBar('week', weekPercent);
-    }, 100);
+      setBar('year', yearPercent, 'Year');
+      setBar('month', monthPercent, 'Month');
+      setBar('week', weekPercent, 'Week');
+    }, 50);
   }
 
+  // 立即执行一次
   updateProgress();
+  // 每 60 秒在后台重新精准计算一次
   setInterval(updateProgress, 60000); 
 </script>
 </body>
